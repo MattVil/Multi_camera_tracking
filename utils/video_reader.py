@@ -1,11 +1,14 @@
 import os
 import cv2
+import math
 import numpy as np
+
+from data_utils import split_image
 
 DATASET_PATH = '/workspace/Dataset/soccer'
 VIDEO_NAME = "0056_2013-11-03 18:01:14.248366000.h264"
 
-def display(frame0, frame1, frame2, ret):
+def display(frame0, frame1, frame2, ret, split=True):
   """"""
   if not ret:
     return None
@@ -19,6 +22,16 @@ def display(frame0, frame1, frame2, ret):
   cv2.moveWindow('Cam0', 0, 0)
   cv2.moveWindow('Cam1', 700, 0)
   cv2.moveWindow('Cam2', 1300, 0)
+
+  if split:
+    for i, frame in enumerate([frame0, frame1, frame2]):
+      nb_split = 4
+      roi = split_image(frame, nb_split=nb_split)
+      for j, sub_img in enumerate(roi):
+        show_s = (int(1/math.sqrt(nb_split)*width*scale),
+                  int(1/math.sqrt(nb_split)*height*scale))
+        cv2.imshow("Frame{}.{}".format(i, j), cv2.resize(sub_img, show_s))
+        cv2.moveWindow("Frame{}.{}".format(i, j), i*700+j*15, 500+j*15)
 
 def main():
     capCam0 = cv2.VideoCapture(os.path.join(DATASET_PATH, '0/', VIDEO_NAME))
