@@ -22,3 +22,5 @@ def split_image(image, nb_split=4, overlap=0.0):
       y = int(j * (new_h - 1/2*overlap_h))
       subImages.append(image[y:y+new_h, x:x+new_w])
   return subImages
+
+ 
