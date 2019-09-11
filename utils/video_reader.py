@@ -1,24 +1,47 @@
+import sys
+sys.path.append('../')
 import os
 import cv2
 import math
 import numpy as np
 
 from data_utils import split_image
+from detection import simulate_detection
 
 DATASET_PATH = '/workspace/Dataset/soccer'
 VIDEO_NAME = "0056_2013-11-03 18:01:14.248366000.h264"
 
-def display(playground, frame0, frame1, frame2, ret, split=True):
+PTS_CAM0 = [[]]
+PTS_CAM1 = [[]]
+PTS_CAM2 = [[]]
+
+def display(playground, frame0, frame1, frame2, ret, points=True, split=True):
   """"""
   if not ret:
     return None
   height, width = frame0.shape[:2]
   scale = 1/2.2
 
+  frame0_d = cv2.resize(frame0, (int(scale*width), int(scale*height)))
+  frame1_d = cv2.resize(frame1, (int(scale*width), int(scale*height)))
+  frame2_d = cv2.resize(frame2, (int(scale*width), int(scale*height)))
+
+  cv2.circle(frame0_d, (425, 70), 2, (0, 255, 00), 2)
+  cv2.circle(playground, (25, 401), 2, (0, 255, 00), 2)
+
+  players = []
+  if points:
+    for frame in [frame0, frame1, frame2]:
+      players.append(simulate_detection(frame))
+    for i, frame_d in enumerate([frame0_d, frame1_d, frame2_d]):
+      for player in players[i]:
+        cv2.circle(frame_d, player, 2, (0, 20, 200), 2)
+
+
   cv2.imshow("Playground", playground)
-  cv2.imshow("Cam0", cv2.resize(frame0, (int(scale*width), int(scale*height))))
-  cv2.imshow("Cam1", cv2.resize(frame1, (int(scale*width), int(scale*height))))
-  cv2.imshow("Cam2", cv2.resize(frame2, (int(scale*width), int(scale*height))))
+  cv2.imshow("Cam0", frame0_d)
+  cv2.imshow("Cam1", frame1_d)
+  cv2.imshow("Cam2", frame2_d)
 
   cv2.moveWindow("Playground", 700, 500)
   cv2.moveWindow('Cam0', 0, 0)
