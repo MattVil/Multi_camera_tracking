@@ -23,4 +23,12 @@ def split_image(image, nb_split=4, overlap=0.0):
       subImages.append(image[y:y+new_h, x:x+new_w])
   return subImages
 
- 
+def calibration_to_array(calibration_path):
+  """Load the calibration file and return calibration between camera space
+  and playground"""
+  calibration = np.load(calibration_path)
+  cam, playground = [], []
+  for points in calibration:
+    cam.append(points[0])
+    playground.append(points[1])
+  return cam, playground

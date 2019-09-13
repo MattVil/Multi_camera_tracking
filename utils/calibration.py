@@ -1,5 +1,6 @@
 import os
 import cv2
+import numpy as np
 from video_reader import DATASET_PATH, VIDEO_NAME
 
 PLAYGROUND_PTS = [(480, 86), (480, 401), (411, 318), (411, 169), (252, 290),
@@ -45,7 +46,9 @@ def main():
 
     print("#"*80)
     print("Calibration for Cam{}".format(i))
+    global CALIBRATION_PTS
     points = CALIBRATION_PTS
+    np.save("calibration_cam{}.npy".format(i), np.asarray(points))
     print(points)
     CALIBRATION_PTS = []
 
