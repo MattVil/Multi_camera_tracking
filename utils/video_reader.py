@@ -7,6 +7,7 @@ import numpy as np
 
 from data_utils import split_image, calibration_to_array
 from detection import simulate_detection
+from projection import transpose_on_playground
 
 DATASET_PATH = '/workspace/Dataset/soccer'
 VIDEO_NAME = "0056_2013-11-03 18:01:14.248366000.h264"
@@ -95,10 +96,9 @@ def main():
   src0, dst0 = calibration_to_array("calibration_cam0.npy")
   src1, dst1 = calibration_to_array("calibration_cam1.npy")
   src2, dst2 = calibration_to_array("calibration_cam2.npy")
-  M0 = cv2.getPerspectiveTransform(src0[:4], dst0[:4])
-  M1 = cv2.getPerspectiveTransform(src1[:4], dst1[:4])
-  M2 = cv2.getPerspectiveTransform(src2[:4], dst2[:4])
-  print(M0)
+  M0, status = cv2.findHomography(src0, dst0, method=cv2.LMEDS)
+  M1, status = cv2.findHomography(src1, dst1, method=cv2.LMEDS)
+  M2, status = cv2.findHomography(src2, dst2, method=cv2.LMEDS)
 
   i=0
   nb_images = min(len(cam0), len(cam1), len(cam2))-1
@@ -113,21 +113,7 @@ def main():
       players.append(simulate_detection(frame))
 
     # compute players projection on the playground
-    projection = []
-    for i, M in enumerate([M0, M1, M2]):
-      for player in players[i]:
-        cam_pos = player.copy()
-        cam_pos.append(1)
-        cam_pos = np.float32(np.asarray(cam_pos))
-        print(cam_pos)
-        # cam_pos = np.float32(np.asarray(cam_pos.append(1)))
-        dot_product = M.dot(cam_pos.T)
-        x = int(dot_product[0]/dot_product[2])
-        y = int(dot_product[1]/dot_product[2])
-        print("{}/{}".format(x, y))
-        projection.append((x, y))
-
-
+    projection = transpose_on_playground(players, [M0, M1, M2])
 
     display(playground, frame0, frame1, frame2, cam_pts=players,
             playground_pts=projection, split=False)
