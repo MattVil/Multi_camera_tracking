@@ -15,7 +15,7 @@ PTS_CAM0 = [[]]
 PTS_CAM1 = [[]]
 PTS_CAM2 = [[]]
 
-def display(playground, frame0, frame1, frame2, ret, points=True, split=True):
+def display(playground, frame0, frame1, frame2, ret=True, points=True, split=True):
   """"""
   if not ret:
     return None
@@ -64,17 +64,33 @@ def main():
     capCam1 = cv2.VideoCapture(os.path.join(DATASET_PATH, '1/', VIDEO_NAME))
     capCam2 = cv2.VideoCapture(os.path.join(DATASET_PATH, '2/', VIDEO_NAME))
     ret = True
+    cam0, cam1, cam2 = [], [], []
 
     while(capCam0.isOpened() and capCam1.isOpened() and capCam2.isOpened() and ret):
       ret0, frame0 = capCam0.read()
       ret1, frame1 = capCam1.read()
       ret2, frame2 = capCam2.read()
       ret = ret0 and ret1 and ret2
+      if ret:
+        cam0.append(frame0)
+        cam1.append(frame1)
+        cam2.append(frame2)
 
-      display(playground, frame0, frame1, frame2, ret, split=False)
+    i=0
+    nb_images = min(len(cam0), len(cam1), len(cam2))-1
+    while(True):
+      frame0 = cam0[i]
+      frame1 = cam1[i]
+      frame2 = cam2[i]
+
+      display(playground, frame0, frame1, frame2, split=False)
 
       k = cv2.waitKey(0)
-      if(k == 27):
+      if(k == 83):
+        i = i+1 if i < nb_images else i
+      elif(k == 81):
+        i = i-1 if i > 0 else i
+      elif(k == 27):
         break
 
     capCam0.release()
