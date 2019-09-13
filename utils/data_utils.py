@@ -29,6 +29,6 @@ def calibration_to_array(calibration_path):
   calibration = np.load(calibration_path)
   cam, playground = [], []
   for points in calibration:
-    cam.append(points[0])
-    playground.append(points[1])
-  return cam, playground
+    cam.append(np.asarray(points[0]))
+    playground.append(np.asarray(points[1]))
+  return np.float32(np.asarray(cam)), np.float32(np.asarray(playground))
