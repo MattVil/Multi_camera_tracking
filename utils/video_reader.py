@@ -4,9 +4,11 @@ import os
 import cv2
 import math
 import numpy as np
+import tensorflow as tf
 
-from data_utils import split_image, calibration_to_array
-from detection import simulate_detection
+from data_utils import split_image, split_image_divisor, calibration_to_array
+from detection import simulate_detection, load_model, PATH_TO_FROZEN_GRAPH
+from detection import run_inference
 from projection import transpose_on_playground
 
 DATASET_PATH = '/workspace/Dataset/soccer'
@@ -46,7 +48,7 @@ def display(playground, frame0, frame1, frame2, ret=True, cam_pts=[],
           (player_proj[0]+10, player_proj[1]+10),
           cv2.FONT_HERSHEY_SIMPLEX,
           0.4,
-          (255,255,255),
+          (0,0,0),
           1)
 
   frame0_d = cv2.resize(frame0_d, (int(scale*width), int(scale*height)))
@@ -66,9 +68,9 @@ def display(playground, frame0, frame1, frame2, ret=True, cam_pts=[],
   if split:
     for i, frame in enumerate([frame0, frame1, frame2]):
       nb_split = 4
-      roi = split_image(frame, nb_split=nb_split)
+      roi = split_image_divisor(frame, 0.01)
       for j, sub_img in enumerate(roi):
-        show_s = (int(1/math.sqrt(nb_split)*width*scale),
+        show_s = (int(1/math.sqrt(nb_spldst0it)*width*scale),
                   int(1/math.sqrt(nb_split)*height*scale))
         cv2.imshow("Frame{}.{}".format(i, j), cv2.resize(sub_img, show_s))
         cv2.moveWindow("Frame{}.{}".format(i, j), i*700+j*15, 500+j*15)
@@ -102,29 +104,53 @@ def main():
 
   i=0
   nb_images = min(len(cam0), len(cam1), len(cam2))-1
-  while(True):
-    frame0 = cam0[i]
-    frame1 = cam1[i]
-    frame2 = cam2[i]
 
-    # Simulate player position for projection
-    players = []
-    for frame in [frame0, frame1, frame2]:
-      players.append(simulate_detection(frame))
+  graph = load_model("../"+PATH_TO_FROZEN_GRAPH)
+  with graph.as_default():
+    with tf.Session() as sess:
+      # Get handles to input and output tensors
+      ops = tf.get_default_graph().get_operations()
+      all_tensor_names = {output.name for op in ops for output in op.outputs}
+      tensor_dict = {}
+      for key in [
+          'num_detections', 'detection_boxes', 'detection_scores',
+          'detection_classes', 'detection_masks'
+      ]:
+        tensor_name = key + ':0'
+        if tensor_name in all_tensor_names:
+          tensor_dict[key] = tf.get_default_graph().get_tensor_by_name(
+              tensor_name)
 
-    # compute players projection on the playground
-    projection = transpose_on_playground(players, [M0, M1, M2])
+      image_tensor = tf.get_default_graph().get_tensor_by_name('image_tensor:0')
 
-    display(playground, frame0, frame1, frame2, cam_pts=players,
-            playground_pts=projection, split=False)
 
-    k = cv2.waitKey(0)
-    if(k == 83):
-      i = i+1 if i < nb_images else i
-    elif(k == 81):
-      i = i-1 if i > 0 else i
-    elif(k == 27):
-      break
+      while(True):
+        frame0 = cam0[i]
+        frame1 = cam1[i]
+        frame2 = cam2[i]
+
+        # Simulate player position for projection
+        cam_points = []
+        for i, frame in enumerate([frame0, frame1, frame2]):
+          cam_points.append([])
+          for sub_frame in split_image_divisor(frame, 0.01):
+            points = run_inference(sub_frame['image'], graph, sess, tensor_dict, image_tensor)
+            (dx, dy) = sub_frame['position']
+            cam_points[i] = cam_points[i] + [[int(x+dx), int(y+dy)] for (x, y) in points]
+
+        # compute players projection on the playground
+        projection = transpose_on_playground(cam_points, [M0, M1, M2])
+
+        display(playground, frame0, frame1, frame2, cam_pts=cam_points,
+                playground_pts=projection, split=False)
+
+        k = cv2.waitKey(0)
+        if(k == 100):
+          i = i+10 if i < nb_images else i
+        elif(k == 113):
+          i = i-10 if i > 0 else i
+        elif(k == 27):
+          break
 
   capCam0.release()
   capCam1.release()

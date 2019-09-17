@@ -23,6 +23,32 @@ def split_image(image, nb_split=4, overlap=0.0):
       subImages.append(image[y:y+new_h, x:x+new_w])
   return subImages
 
+
+def split_image_divisor(image, scale):
+  """"""
+  height, width = image.shape[:2]
+  max_size = max(height, width)
+  divisor = []
+  for i in range(2, max_size):
+    if(height%i == 0 and width%i == 0):
+      divisor.append(i)
+
+  divisor = divisor[::-1]
+  idx = int(scale*len(divisor))
+  box_size = divisor[idx]
+  nb_x = int(width/box_size)
+  nb_y = int(height/box_size)
+  subImages = []
+  for i in range(nb_x):
+    for j in range(nb_y):
+      x = int(i*box_size)
+      y = int(j*box_size)
+      subImages.append({'image':image[y:y+box_size, x:x+box_size],
+                        'position':(x, y)})
+  return subImages
+
+
+
 def calibration_to_array(calibration_path):
   """Load the calibration file and return calibration between camera space
   and playground"""

@@ -24,6 +24,7 @@ def transpose_on_playground(players, perspective_Ms):
     for player in players[i]:
       cam_pos = player.copy()
       cam_pos.append(1)
+      # print(cam_pos)
       cam_pos = np.float32(np.asarray(cam_pos))
       dot_product = M.dot(cam_pos.T)
       dot_product = dot_product.T
