@@ -50,12 +50,63 @@ def load_image_into_numpy_array(image):
 def bbox_to_point(bbox, img_size, proj_type='footprint'):
   """"""
   x, y = 0, 0
-  x = int((bbox[1] * img_size + bbox[3] * img_size)/2)
+  x = int((bbox[0] * img_size + bbox[2] * img_size)/2)
   if(proj_type == 'footprint'):
-    y = int(bbox[2] * img_size)
+    y = int(bbox[3] * img_size)
   else: # 'centroid'
-    y = int((bbox[0] * img_size + bbox[2] * img_size)/2)
+    y = int((bbox[1] * img_size + bbox[3] * img_size)/2)
   return [x, y]
+
+def iou(bbox1, bbox2):
+  """return the IoU (Intersection over Union) of 2 bboxes"""
+  # determine the coordinates of the intersection rectangle
+  x_left = max(bbox1[0], bbox2[0])
+  y_top = max(bbox1[1], bbox2[1])
+  x_right = min(bbox1[2], bbox2[2])
+  y_bottom = min(bbox1[3], bbox2[3])
+
+  if x_right < x_left or y_bottom < y_top:
+    return 0.0
+
+  intersection_area = (x_right - x_left) * (y_bottom - y_top)
+
+  bb1_area = (bbox1[2] - bbox1[0]) * (bbox1[3] - bbox1[1])
+  bb2_area = (bbox2[2] - bbox2[0]) * (bbox2[3] - bbox2[1])
+
+  iou = intersection_area / float(bb1_area + bb2_area - intersection_area)
+  return iou
+
+def merge_bboxes(bboxes):
+  """"""
+  no_more_merge = False
+  while(not no_more_merge):
+    new_bboxes, rm_bboxes = [], []
+    no_more_merge  = True
+    for i, bbox1 in enumerate(bboxes):
+      for j, bbox2 in enumerate(bboxes):
+        if(i < j):
+          # if bbox2 in bbox1 then keep bbox1
+          if(bbox1[0]<=bbox2[0] and bbox1[1]<=bbox2[1] and bbox1[2]>=bbox2[2] and bbox1[3]>=bbox2[3]):
+            rm_bboxes.append(bbox2)
+            no_more_merge = False
+          # if bbox1 in bbox2 then keep bbox2
+          elif(bbox2[0]<=bbox1[0] and bbox2[1]<=bbox1[1] and bbox2[2]>=bbox1[2] and bbox2[3]>=bbox1[3]):
+            rm_bboxes.append(bbox1)
+            no_more_merge = False
+          # if overlapping bboxes then merges
+          elif(iou(bbox1, bbox2) > 0.05):
+            new_bboxes.append((min(bbox1[0], bbox2[0]),
+                               min(bbox1[1], bbox2[1]),
+                               max(bbox1[2], bbox2[2]),
+                               max(bbox1[3], bbox2[3])))
+            no_more_merge = False
+
+    rm_bboxes = [t for t in (set(tuple(i) for i in rm_bboxes))]
+    for rm_bbox in rm_bboxes:
+      bboxes.remove(rm_bbox)
+    bboxes = bboxes + new_bboxes
+  return bboxes
+
 
 def run_inference(image, graph, session, tensor_dict, image_tensor, confidence=0.3):
   """"""
@@ -73,7 +124,7 @@ def run_inference(image, graph, session, tensor_dict, image_tensor, confidence=0
     'detection_classes'][0].astype(np.int64)
   output_dict['detection_boxes'] = output_dict['detection_boxes'][0]
   output_dict['detection_scores'] = output_dict['detection_scores'][0]
-  points = []
+  points, bboxes = [], []
   for k in range(output_dict['num_detections']):
     classId = int(output_dict['detection_classes'][k])
     score = float(output_dict['detection_scores'][k])
@@ -83,7 +134,10 @@ def run_inference(image, graph, session, tensor_dict, image_tensor, confidence=0
       y = bbox[0] * 640
       right = bbox[3] * 640
       bottom = bbox[2] * 640
-      points.append([i*resize_ratio for i in bbox_to_point(bbox, 640)])
+      bboxes.append((int(x), int(y), int(right), int(bottom)))
+  bboxes = merge_bboxes(bboxes)
+  for bbox in bboxes:
+    points.append([i*resize_ratio for i in bbox_to_point(bbox, 1)])
   return points
 
 
@@ -129,13 +183,13 @@ def run_inference_full():
       # Run inference
       i = 0
       while(True):
-        image = cam0[i]
-        splited_imgs = split_image_divisor(image, 0.1)
+        image = cam2[i]
+        splited_imgs = split_image_divisor(image, 0.01)
         org_img = []
         for j, img in enumerate(splited_imgs):
-          splited_imgs[j] = cv2.resize(img, (640, 640))
-          org_img.append(splited_imgs[j])
-          splited_imgs[j] = np.expand_dims(img, axis=0)
+          im = cv2.resize(img['image'], (640, 640))
+          org_img.append(im)
+          splited_imgs[j] = np.expand_dims(im, axis=0)
 
         for j, img in enumerate(splited_imgs):
           output_dict = sess.run(tensor_dict, feed_dict={image_tensor: img})
@@ -150,6 +204,7 @@ def run_inference_full():
           print(j)
           print(output_dict)
           num_detections = output_dict['num_detections']
+          bboxes = []
           for k in range(num_detections):
             classId = int(output_dict['detection_classes'][k])
             score = float(output_dict['detection_scores'][k])
@@ -159,9 +214,15 @@ def run_inference_full():
               y = bbox[0] * 640
               right = bbox[3] * 640
               bottom = bbox[2] * 640
-              cv2.rectangle(org_img[j], (int(x), int(y)), (int(right), int(bottom)), (125, 255, 51), thickness=2)
-              cv2.circle(org_img[j], bbox_to_point(bbox, 640), 10, (0, 0, 200), -1)
-              cv2.imshow("sub{}".format(j), org_img[j])
+              bboxes.append((int(x), int(y), int(right), int(bottom)))
+          print("#"*30)
+          print(bboxes)
+          bboxes = merge_bboxes(bboxes)
+          print(bboxes)
+          for (x, y, right, bottom) in bboxes:
+            cv2.rectangle(org_img[j], (int(x), int(y)), (int(right), int(bottom)), (125, 255, 51), thickness=2)
+            cv2.circle(org_img[j], tuple(bbox_to_point((x, y, right, bottom), 1)), 10, (0, 0, 200), -1)
+          cv2.imshow("sub{}".format(j), org_img[j])
         cv2.imshow("src", cam0[i])
 
         k = cv2.waitKey(0)
@@ -173,7 +234,7 @@ def run_inference_full():
           break
 
 def main():
-  run_inference()
+  run_inference_full()
 
 if __name__ == '__main__':
   main()

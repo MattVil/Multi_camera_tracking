@@ -13,10 +13,44 @@ def draw_circle(event, x, y, flags, param):
   """"""
   global mouseX, mouseY
   if event == cv2.EVENT_LBUTTONDOWN:
-    CALIBRATION_PTS.append(((x, y), CURRENT_PT))
+    param = [x, y]
     mouseX, mouseY = x, y
 
 def main():
+
+    for i in range(3):
+      print("#"*10 + " cam " + str(i) + " " + "#"*10)
+      cap = cv2.VideoCapture(os.path.join(DATASET_PATH, str(i)+'/', VIDEO_NAME))
+      playground_org = cv2.imread(os.path.join(DATASET_PATH, 'playground.jpg'))
+      if not cap.isOpened():
+        print("Error reading video stream.")
+        exit()
+
+      cam_pts = []
+      playground_pts = []
+      cam_pt, playground_pt = [0, 0], [0, 0]
+      while(True):
+        ret, frame = cap.read()
+        cv2.namedWindow('Cam')
+        cv2.setMouseCallback('Cam', draw_circle, cam_pt)
+        cv2.imshow("Cam", frame)
+        cv2.namedWindow('Playground')
+        cv2.setMouseCallback('Playground', draw_circle, playground_pt)
+        cv2.imshow("Playground", playground_org)
+        cv2.moveWindow("Playground", 1400, 0)
+
+        k = cv2.waitKey(0)
+        if k == 27:
+          exit()
+        elif k == 13:
+          print(cam_pts)
+          print(playground_pts)
+          break
+        elif k == 32:
+          cam_pts.append(cam_pt)
+          playground_pts.append(playground_pt)
+
+def main_old():
   """"""
   playground_org = cv2.imread(os.path.join(DATASET_PATH, 'playground.jpg'))
   for i in range(3):

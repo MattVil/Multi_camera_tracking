@@ -32,3 +32,30 @@ def transpose_on_playground(players, perspective_Ms):
       y = int(dot_product[1]/dot_product[2])
       projection.append((x, y))
   return projection
+
+def distance(p1, p2):
+  """"""
+  return (p1[0]-p2[0])**2 + (p1[1]-p2[1])**2
+
+def fuse_points(points, d):
+  """"""
+  ret = []
+  d2 = d * d
+  n = len(points)
+  taken = [False] * n
+  for i in range(n):
+    if not taken[i]:
+      count = 1
+      point = [points[i][0], points[i][1]]
+      taken[i] = True
+      for j in range(i+1, n):
+        if distance(points[i], points[j]) < d2:
+          print(distance(points[i], points[j]))
+          point[0] += points[j][0]
+          point[1] += points[j][1]
+          count+=1
+          taken[j] = True
+      point[0] /= count
+      point[1] /= count
+      ret.append((int(point[0]), int(point[1])))
+  return ret

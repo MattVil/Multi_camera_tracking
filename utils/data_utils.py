@@ -47,8 +47,6 @@ def split_image_divisor(image, scale):
                         'position':(x, y)})
   return subImages
 
-
-
 def calibration_to_array(calibration_path):
   """Load the calibration file and return calibration between camera space
   and playground"""
@@ -58,3 +56,13 @@ def calibration_to_array(calibration_path):
     cam.append(np.asarray(points[0]))
     playground.append(np.asarray(points[1]))
   return np.float32(np.asarray(cam)), np.float32(np.asarray(playground))
+
+def merge_points(points, merge_dst=5):
+  """"""
+  to_be_merge = []
+  for i, p1 in enumerate(points):
+    for j, p2 in enumerate(points):
+      if i < j:
+        break
+      if(math.sqrt((p1[0]+p2[0])**2 + (p1[1]+p2[1])**2) < merge_dst):
+        to_be_merge.append((i, j))

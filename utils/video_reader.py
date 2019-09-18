@@ -9,7 +9,7 @@ import tensorflow as tf
 from data_utils import split_image, split_image_divisor, calibration_to_array
 from detection import simulate_detection, load_model, PATH_TO_FROZEN_GRAPH
 from detection import run_inference
-from projection import transpose_on_playground
+from projection import transpose_on_playground, fuse_points
 
 DATASET_PATH = '/workspace/Dataset/soccer'
 VIDEO_NAME = "0056_2013-11-03 18:01:14.248366000.h264"
@@ -102,7 +102,7 @@ def main():
   M1, status = cv2.findHomography(src1, dst1, method=cv2.LMEDS)
   M2, status = cv2.findHomography(src2, dst2, method=cv2.LMEDS)
 
-  i=0
+  i=80
   nb_images = min(len(cam0), len(cam1), len(cam2))-1
 
   graph = load_model("../"+PATH_TO_FROZEN_GRAPH)
@@ -140,15 +140,16 @@ def main():
 
         # compute players projection on the playground
         projection = transpose_on_playground(cam_points, [M0, M1, M2])
+        projection = fuse_points(projection, 20)
 
         display(playground, frame0, frame1, frame2, cam_pts=cam_points,
                 playground_pts=projection, split=False)
 
         k = cv2.waitKey(0)
         if(k == 100):
-          i = i+10 if i < nb_images else i
+          i = i+5 if i < nb_images else i
         elif(k == 113):
-          i = i-10 if i > 0 else i
+          i = i-5 if i > 0 else i
         elif(k == 27):
           break
 
