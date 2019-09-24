@@ -13,13 +13,12 @@ def draw_circle(event, x, y, flags, param):
   """"""
   global mouseX, mouseY
   if event == cv2.EVENT_LBUTTONDOWN:
-    param = [x, y]
+    param.append([x, y])
     mouseX, mouseY = x, y
 
 def main():
 
     for i in range(3):
-      print("#"*10 + " cam " + str(i) + " " + "#"*10)
       cap = cv2.VideoCapture(os.path.join(DATASET_PATH, str(i)+'/', VIDEO_NAME))
       playground_org = cv2.imread(os.path.join(DATASET_PATH, 'playground.jpg'))
       if not cap.isOpened():
@@ -28,7 +27,7 @@ def main():
 
       cam_pts = []
       playground_pts = []
-      cam_pt, playground_pt = [0, 0], [0, 0]
+      cam_pt, playground_pt = [], []
       while(True):
         ret, frame = cap.read()
         cv2.namedWindow('Cam')
@@ -43,12 +42,14 @@ def main():
         if k == 27:
           exit()
         elif k == 13:
-          print(cam_pts)
-          print(playground_pts)
+          calibration_pts = []
+          for cam_p, play_p in zip(cam_pts, playground_pts):
+            calibration_pts.append([cam_p, play_p])
+          np.save("calibration_cam_new{}.npy".format(i), np.asarray(calibration_pts))
           break
         elif k == 32:
-          cam_pts.append(cam_pt)
-          playground_pts.append(playground_pt)
+          cam_pts.append(cam_pt[-1])
+          playground_pts.append(playground_pt[-1])
 
 def main_old():
   """"""
