@@ -1,18 +1,58 @@
 import os
+import cv2
 import numpy as np
 import tensorflow as tf
 from abc import ABC, abstractmethod
 
-from utils.constant import
-from detection import load_model
-from utils.data_utils import calibration_to_array
+from utils import constant
+from data_loader import StreamLoader, VideoLoader 
+from detection import load_model, run_inference
+from utils.data_utils import calibration_to_array, split_image_divisor
+from projection import transpose_on_playground, fuse_points
 
+class Tracker(ABC):
+  """"""
+
+  def __init__(self, mode, data_sources):
+    assert(mode in ['stream',  'video'])
+    if mode == 'stream':
+      self.data_loader = StreamLoader(data_sources)
+    elif mode == 'video':
+      self.data_loader = VideoLoader(data_sources)
+
+
+  def __setup_streams(self, streams):
+
+  @abstractmethod
+  def run(self):
+    pass
 
 class SimpleTracker(Tracker):
   """"""
 
   def __init__(self):
-    super(AbstractOperation, self).__init__()
+    super(Tracker, self).__init__()
+
+  def run(self, streams):
+  """"""
+  M = self.__compute_homography(constant.CALIBRATION_FILES)
+  graph, tensor_dict, image_tensor=self.__load_model(constant.PATH_TO_FROZEN_GRAPH)
+  with graph.as_default():
+    with tf.Session() as sess:
+      while(True):
+        frames, ret = self.data_loader.get_next_frames()
+
+        cam_points = [[] for _ in frames]
+        for i, frame in enumerate(frames):
+          for sub_frame in split_image_divisor(frame, 0.01):
+            # object detection
+            points = run_inference(sub_frame['image'], graph, sess, tensor_dict, image_tensor)
+            (dx, dy) = sub_frame['position']
+            cam_points[i]=cam_points[i]+[[int(x+dx), int(y+dy)] for (x, y) in points]
+
+        # compute players projection on the playground
+        projection = transpose_on_playground(cam_points, M)
+        projection = fuse_points(projection, 20)
 
   def __load_model(self, path_to_frozen_graph):
     """Load weigths from file and return computation graph, tensor_dict."""
@@ -38,52 +78,12 @@ class SimpleTracker(Tracker):
 
     return detection_graph, tensor_dict, image_tensor
 
-  def __get_frames(self, streams):
-    """"""
-    frames = []
-    ret = True
-    for stream in streams:
-      ret0, frame = stream.read()
-      frames.append(frame)
-      ret = ret and ret0
-    return frames, ret
-
-  def __compute_homography(self, cam_names):
+  def __compute_homography(self, calibration_files):
     """"""
     M = []
-    for name in cam_names:
-      src, dst = calibration_to_array(name)
+    for file in calibration_files:
+      src, dst = calibration_to_array(os.path.join("./utils/", file))
       M0, status = cv2.findHomography(src, dst, method=cv2.LMEDS)
       M.append(M0)
     return M
 
-  def run(self, streams):
-    """"""
-    graph, tensor_dict, image_tensor = load_model("../"+PATH_TO_FROZEN_GRAPH)
-    with graph.as_default():
-      with tf.Session() as sess:
-        while(True):
-          frames, ret = self.__get_frames(streams)
-
-          cam_points = [[] for _ in frames]
-          for i, frame in enumerate(frames):
-            for sub_frame in split_image_divisor(frame, 0.01):
-              # object detection
-              points = run_inference(sub_frame['image'], graph, sess, tensor_dict, image_tensor)
-              (dx, dy) = sub_frame['position']
-              cam_points[i] = cam_points[i] + [[int(x+dx), int(y+dy)] for (x, y) in points]
-
-          # compute players projection on the playground
-          projection = transpose_on_playground(cam_points, [M0, M1, M2])
-          projection = fuse_points(projection, 20)
-
-
-class Tracker(ABC):
-  """"""
-
-  def __init__(self):
-    pass
-
-  @abstractmethod
-  def run(self):
-    pass
