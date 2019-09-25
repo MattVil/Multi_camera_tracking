@@ -1,0 +1,12 @@
+Cython==0.29.13
+decorator==4.4.0
+future==0.17.1
+h5py==2.9.0
+horovod==0.16.4
+matplotlib==3.1.1
+numpy==1.14.5
+opencv-python==4.1.1.26
+protobuf==3.9.1
+tensorboard==1.14.0+nv
+tensorflow-estimator==1.14.0
+tensorflow-gpu==1.14.0+nv
