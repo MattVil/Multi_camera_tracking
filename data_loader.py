@@ -1,3 +1,5 @@
+import os
+import cv2
 from abc import ABC, abstractmethod
 
 class DataLoader(ABC):
@@ -14,14 +16,17 @@ class StreamLoader(DataLoader):
   """"""
 
   def __init__(self, streams_n):
-    super(DataLoader, self).__init__()
+    DataLoader.__init__(self)
     self.streams_n = streams_n
     self.streams = self.__setup_streams()
 
   def __setup_streams(self):
     """"""
+    streams = []
     for stream_n in self.streams_n:
-      self.streams = cv2.VideoCapture(stream_n)
+      streams.append(cv2.VideoCapture(stream_n))
+    return streams
+    
 
   def get_next_frames(self):
     """"""
@@ -39,22 +44,28 @@ class VideoLoader(DataLoader):
   """"""
 
   def __init__(self, videos_n):
-    super(DataLoader, self).__init__()
+    DataLoader.__init__(self)
     self.videos_n = videos_n
     self.videos = self.__setup_videos()
     self.current_frame_idx = 0
 
   def __setup_videos(self):
     """"""
+    videos =[]
     for i, video_n in enumerate(self.videos_n):
-      self.videos.append([])
+      assert(os.path.exists(video_n))
+      videos.append([])
       cap = cv2.VideoCapture(video_n)
-      while(cap.isOpened()):
-        frame, r = cap.read()
-        self.videos[i].append(frame)
-      # cut videos to the same size 
-      self.videos = [v[:min([len(x) for x in self.videos])] for v in self.videos]
-      self.nb_frame = len(self.videos[0]) 
+      ret = True
+      p = 0
+      while(cap.isOpened()and ret):
+        p = p+1
+        ret, frame = cap.read()
+        videos[i].append(frame)
+    # cut videos to the same size 
+    videos = [v[:min([len(x) for x in videos])] for v in videos]
+    self.nb_frame = len(videos[0]) 
+    return videos
 
   def get_next_frames(self):
     """"""

@@ -7,3 +7,4 @@ MODEL_NAME = "ssd_resnet50_v1_fpn_shared_box_predictor_640x640_coco14_sync_2018_
 PATH_TO_FROZEN_GRAPH = "model/" + MODEL_NAME + "/frozen_inference_graph.pb"
 PATH_TO_LABELS = "model/" + MODEL_NAME + "/mscoco_label_map.pbtxt"
 
+DATA_SOURCES = [DATASET_PATH+'/{}/'.format(i)+VIDEO_NAME for i in [0, 1, 2]]

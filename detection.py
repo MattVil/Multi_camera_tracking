@@ -76,37 +76,41 @@ def iou(bbox1, bbox2):
   iou = intersection_area / float(bb1_area + bb2_area - intersection_area)
   return iou
 
-def merge_bboxes(bboxes):
+def merge_bboxes(bboxes, iou_thresh=0.05):
   """"""
   no_more_merge = False
   while(not no_more_merge):
     new_bboxes, rm_bboxes = [], []
-    no_more_merge  = True
+    no_more_merge = True
     for i, bbox1 in enumerate(bboxes):
       for j, bbox2 in enumerate(bboxes):
         if(i < j):
           # if bbox2 in bbox1 then keep bbox1
-          if(bbox1[0]<=bbox2[0] and bbox1[1]<=bbox2[1] and bbox1[2]>=bbox2[2] and bbox1[3]>=bbox2[3]):
+          if(bbox1[0]<=bbox2[0] and bbox1[1]<=bbox2[1] and 
+             bbox1[2]>=bbox2[2] and bbox1[3]>=bbox2[3]):
             rm_bboxes.append(bbox2)
             no_more_merge = False
           # if bbox1 in bbox2 then keep bbox2
-          elif(bbox2[0]<=bbox1[0] and bbox2[1]<=bbox1[1] and bbox2[2]>=bbox1[2] and bbox2[3]>=bbox1[3]):
+          elif(bbox2[0]<=bbox1[0] and bbox2[1]<=bbox1[1] and 
+               bbox2[2]>=bbox1[2] and bbox2[3]>=bbox1[3]):
             rm_bboxes.append(bbox1)
             no_more_merge = False
           # if overlapping bboxes then merges
-          elif(iou(bbox1, bbox2) > 0.05):
+          elif(iou(bbox1, bbox2) > iou_thresh):
             new_bboxes.append((min(bbox1[0], bbox2[0]),
                                min(bbox1[1], bbox2[1]),
                                max(bbox1[2], bbox2[2]),
                                max(bbox1[3], bbox2[3])))
+            rm_bboxes.append(bbox1)
+            rm_bboxes.append(bbox2)
             no_more_merge = False
-
     rm_bboxes = [t for t in (set(tuple(i) for i in rm_bboxes))]
     for rm_bbox in rm_bboxes:
       bboxes.remove(rm_bbox)
     bboxes = bboxes + new_bboxes
+    bboxes = [t for t in (set(tuple(i) for i in bboxes))]
+    print("\t"+str(bboxes))
   return bboxes
-
 
 def run_inference(image, graph, session, tensor_dict, image_tensor, confidence=0.3):
   """"""
@@ -135,12 +139,13 @@ def run_inference(image, graph, session, tensor_dict, image_tensor, confidence=0
       right = bbox[3] * 640
       bottom = bbox[2] * 640
       bboxes.append((int(x), int(y), int(right), int(bottom)))
+  print("#"*30)
+  print(bboxes)
   bboxes = merge_bboxes(bboxes)
+  print(bboxes)
   for bbox in bboxes:
     points.append([i*resize_ratio for i in bbox_to_point(bbox, 1)])
   return points
-
-
 
 def run_inference_full():
   """"""

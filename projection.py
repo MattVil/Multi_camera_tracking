@@ -24,7 +24,6 @@ def transpose_on_playground(players, perspective_Ms):
     for player in players[i]:
       cam_pos = player.copy()
       cam_pos.append(1)
-      # print(cam_pos)
       cam_pos = np.float32(np.asarray(cam_pos))
       dot_product = M.dot(cam_pos.T)
       dot_product = dot_product.T
@@ -50,7 +49,6 @@ def fuse_points(points, d):
       taken[i] = True
       for j in range(i+1, n):
         if distance(points[i], points[j]) < d2:
-          print(distance(points[i], points[j]))
           point[0] += points[j][0]
           point[1] += points[j][1]
           count+=1
