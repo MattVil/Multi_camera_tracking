@@ -24,7 +24,74 @@ class Tracker(ABC):
   def run(self):
     pass
 
+  def __compute_homography(self, calibration_files):
+    """"""
+    M = []
+    for file in calibration_files:
+      src, dst = calibration_to_array(os.path.join("./utils/", file))
+      M0, status = cv2.findHomography(src, dst, method=cv2.LMEDS)
+      M.append(M0)
+    return M
+
+
 class SimpleTracker(Tracker):
+  """"""
+
+  def __init__(self, mode, data_sources):
+    super().__init__(mode, data_sources)
+
+  def run(self):
+    """"""
+    M = self.__compute_homography(constant.CALIBRATION_FILES)
+    __is_running = True
+
+    mog2s = [cv2.createBackgroundSubtractorMOG2() for i in range(3)]
+    while(__is_running):
+
+      frames, __is_running = self.data_loader.get_next_frames()
+
+      for i, frame in enumerate(frames):
+        frame = cv2.GaussianBlur(frame, (5, 5), 0)
+        # frame = cv2.GaussianBlur(frame, (5, 5), 0)
+        # frame = cv2.GaussianBlur(frame, (5, 5), 0)
+
+
+        mog2_mask = mog2s[i].apply(frame)
+        ret, mask = cv2.threshold(mog2_mask, 245, 255, cv2.THRESH_BINARY)
+        mask = cv2.erode(mask, np.ones((2,2), np.uint8))
+        mask = cv2.erode(mask, np.ones((5,5), np.uint8))
+        mask = cv2.erode(mask, np.ones((3,3), np.uint8))
+        mask = cv2.dilate(mask, np.ones((5,5), np.uint8)) 
+        mask = cv2.erode(mask, np.ones((5,5), np.uint8)) 
+        mask = cv2.erode(mask, np.ones((3,3), np.uint8)) 
+        mask = cv2.dilate(mask, np.ones((5,5), np.uint8)) 
+        # mask = cv2.dilate(mask, np.ones((10,10), np.uint8)) 
+        with_mask = cv2.addWeighted(frame, 1, 
+                                    cv2.cvtColor(mask, cv2.COLOR_GRAY2RGB), 0.7, 0)
+        cv2.imshow('mog2_{}'.format(i), cv2.resize(mask, (480, 360)))
+        cv2.imshow('Origin_{}'.format(i),cv2.resize(frame, (480, 360)))
+        cv2.imshow('masked_{}'.format(i),cv2.resize(with_mask, (480, 360)))
+        cv2.moveWindow('Origin_{}'.format(i), i*480+100, 0)
+        cv2.moveWindow('mog2_{}'.format(i), i*480+100, 470)
+        cv2.moveWindow('masked_{}'.format(i), i*480+100, 0)
+      k = cv2.waitKey(0)
+      if k == 27:
+          break
+
+  def __compute_homography(self, calibration_files):
+    """"""
+    M = []
+    for file in calibration_files:
+      src, dst = calibration_to_array(os.path.join("./utils/", file))
+      M0, status = cv2.findHomography(src, dst, method=cv2.LMEDS)
+      M.append(M0)
+    return M
+
+
+
+
+
+class TFObjectDetectionAPITracker(Tracker):
   """"""
 
   def __init__(self, mode, data_sources):
@@ -78,12 +145,4 @@ class SimpleTracker(Tracker):
 
     return detection_graph, tensor_dict, image_tensor
 
-  def __compute_homography(self, calibration_files):
-    """"""
-    M = []
-    for file in calibration_files:
-      src, dst = calibration_to_array(os.path.join("./utils/", file))
-      M0, status = cv2.findHomography(src, dst, method=cv2.LMEDS)
-      M.append(M0)
-    return M
 

@@ -1,9 +1,10 @@
 from utils import constant
-from tracker import SimpleTracker
+from tracker import SimpleTracker, TFObjectDetectionAPITracker
 
 def main():
   print("BEGIN")
   print("BUILD SimpleTracker")
+  # tracker = TFObjectDetectionAPITracker('video', constant.DATA_SOURCES)
   tracker = SimpleTracker('video', constant.DATA_SOURCES)
   print("END BUILD")
   print("BEGIN RUN")
