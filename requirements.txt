@@ -4,7 +4,7 @@ future==0.17.1
 h5py==2.9.0
 horovod==0.16.4
 matplotlib==3.1.1
-numpy==1.14.5
+numpy==1.22.0
 opencv-python==4.1.1.26
 protobuf==3.9.1
 tensorboard==1.14.0+nv
